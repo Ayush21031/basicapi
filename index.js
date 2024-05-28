@@ -10,6 +10,10 @@ server.get('/', (req, res) => {
     res.send('Hello World');
 });
 
+server.get('/update', (req, res) => {
+    res.send('Update');
+});
+
 server.use('/product', router.router);
 
 
