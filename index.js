@@ -14,6 +14,10 @@ server.get('/update', (req, res) => {
     res.send('Update');
 });
 
+server.get('/update2', (req, res) => {
+    res.send('this Update2 with gcp automation');
+});
+
 server.use('/product', router.router);
 
 
