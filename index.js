@@ -18,6 +18,10 @@ server.get('/update2', (req, res) => {
     res.send('this Update2 with gcp automation');
 });
 
+server.get('/update3', (req, res) => {
+    res.send('this Update3 with gcp');
+});
+
 server.use('/product', router.router);
 
 
