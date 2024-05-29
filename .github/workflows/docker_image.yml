@@ -67,8 +67,12 @@ jobs:
         service_account_key: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Configure docker to use gcloud command-line tool as a credential helper
-      run: gcloud auth configure-docker
+    - name: Authenticate with Google Cloud
+      run: |
+        echo "${{ secrets.GCP_SA_KEY }}" > "${{ github.workspace }}/gcloud.json"
+        gcloud auth activate-service-account --key-file="${{ github.workspace }}/gcloud.json"
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+        gcloud config set compute/zone ${{ secrets.GCP_ZONE }}
 
     - name: Connect to GCP VM and update Docker container
       env:
@@ -86,3 +90,4 @@ jobs:
           docker rm basicapi-container || true &&
           docker run -d --name basicapi-container -p 80:80 ayush21031/basicapi:latest
         "
+
