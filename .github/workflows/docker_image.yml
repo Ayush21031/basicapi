@@ -30,15 +30,15 @@
 #         tags: ayush21031/basicapi:latest
 
 
-name: Build, Push, and Deploy Docker image
+name: Build, Push Docker Image, and Deploy to GCP VM
 
 on:
   push:
     branches:
-      - master # Trigger the workflow on push to the main branch (change if your default branch is different)
+      - master  # Trigger the workflow on push to the main branch
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -61,13 +61,28 @@ jobs:
         push: true
         tags: ayush21031/basicapi:latest
 
-    - name: Deploy to GCP VM
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Configure docker to use gcloud command-line tool as a credential helper
+      run: gcloud auth configure-docker
+
+    - name: Connect to GCP VM and update Docker container
       env:
-        GCP_VM_IP: ${{ secrets.GCP_VM_IP }}
-        SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_VM_INSTANCE: ${{ secrets.GCP_VM_INSTANCE }}
+        GCP_ZONE: ${{ secrets.GCP_ZONE }}
       run: |
-        echo "${SSH_PRIVATE_KEY}" > ssh_key
-        chmod 600 ssh_key
-        scp -o StrictHostKeyChecking=no -i ssh_key deploy.sh $SSH_USERNAME@$GCP_VM_IP:~/deploy.sh
-        ssh -o StrictHostKeyChecking=no -i ssh_key $SSH_USERNAME@$GCP_VM_IP "bash ~/deploy.sh"
+        # Get the external IP of the VM instance
+        GCP_VM_IP=$(gcloud compute instances describe $GCP_VM_INSTANCE --zone $GCP_ZONE --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+        
+        # SSH into the VM and run the commands to update the Docker container
+        gcloud compute ssh $GCP_VM_INSTANCE --zone $GCP_ZONE --command "
+          docker pull ayush21031/basicapi:latest &&
+          docker stop basicapi-container || true &&
+          docker rm basicapi-container || true &&
+          docker run -d --name basicapi-container -p 80:80 ayush21031/basicapi:latest
+        "
